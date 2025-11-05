@@ -30,6 +30,7 @@ jobs:
           mkdir -p ./deploy/assets
           cp ./target/wasm32-unknown-unknown/release/my-game.wasm ./deploy/
           cp index.html ./deploy/
+          cp mq_js_bundle.js ./deploy/
           cp -r assets/ ./deploy/
 
       - name: Deploy
