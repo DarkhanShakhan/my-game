@@ -1,5 +1,7 @@
 use macroquad::audio::{PlaySoundParams, Sound, load_sound, play_sound, play_sound_once};
 use macroquad::experimental::animation::{AnimatedSprite, Animation};
+use macroquad::experimental::collections::storage;
+use macroquad::experimental::coroutines::start_coroutine;
 use macroquad::prelude::*;
 use macroquad::ui::{Skin, hash, root_ui};
 use macroquad_particles::{self as particles, AtlasConfig, Emitter, EmitterConfig};
@@ -106,14 +108,14 @@ impl Resources {
 
         let window_style = root_ui()
             .style_builder()
-            .background(window_background)
+            .background(window_background.clone())
             .background_margin(RectOffset::new(32.0, 76.0, 44.0, 20.0))
             .margin(RectOffset::new(0.0, -40.0, 0.0, 0.0))
             .build();
         let button_style = root_ui()
             .style_builder()
-            .background(button_background)
-            .background_clicked(button_clicked_background)
+            .background(button_background.clone())
+            .background_clicked(button_clicked_background.clone())
             .background_margin(RectOffset::new(16.0, 16.0, 16.0, 16.0))
             .margin(RectOffset::new(16.0, 0.0, -8.0, -8.0))
             .font(&font)?
@@ -143,6 +145,31 @@ impl Resources {
             sound_laser,
             ui_skin,
         })
+    }
+
+    pub async fn load() -> Result<(), macroquad::Error> {
+        let resources_loading = start_coroutine(async move {
+            let resources = Resources::new().await.unwrap();
+            storage::store(resources);
+        });
+
+        while !resources_loading.is_done() {
+            clear_background(BLACK);
+            let text = format!(
+                "Loading resources {}",
+                ".".repeat(((get_time() * 2.) as usize) % 4)
+            );
+            draw_text(
+                &text,
+                screen_width() / 2. - 160.,
+                screen_height() / 2.,
+                40.,
+                WHITE,
+            );
+            next_frame().await;
+        }
+
+        Ok(())
     }
 }
 
@@ -186,7 +213,8 @@ async fn main() -> Result<(), macroquad::Error> {
     let mut explosions: Vec<(Emitter, Vec2)> = vec![];
 
     set_pc_assets_folder("assets");
-    let resources = Resources::new().await?;
+    Resources::load().await?;
+    let resources = storage::get::<Resources>();
 
     let mut bullet_sprite = AnimatedSprite::new(
         16,
